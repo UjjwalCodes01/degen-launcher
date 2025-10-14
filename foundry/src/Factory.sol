@@ -37,8 +37,7 @@ contract Factory{
         uint256 floor = 0.0001 ether;
         uint256 step = 0.0001 ether;
         uint256 increment = 10000 ether;
-
-        uint256 cost = (step * (_sold/increment))*floor;
+        uint256 cost = floor + (step * (_sold/increment));
         return cost;
     }
 
