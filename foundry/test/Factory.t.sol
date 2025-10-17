@@ -56,7 +56,7 @@ contract FactoryTest is Test {
         vm.expectEmit(false, false, false, false);
         emit Created(address(0));
         
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         assertEq(factory.totalTokens(), 1);
         address tokenAddress = factory.tokens(0);
@@ -68,6 +68,7 @@ contract FactoryTest is Test {
         assertEq(sale.sold, 0);
         assertEq(sale.raised, 0);
         assertTrue(sale.isOpen);
+        assertEq(sale.image, "https://example.com/token.png");
         
         vm.stopPrank();
     }
@@ -75,13 +76,13 @@ contract FactoryTest is Test {
     function test_Revert_CreateTokenInsufficientFee() public {
         vm.prank(user1);
         vm.expectRevert();
-        factory.create{value: 0.005 ether}("TestToken", "TEST");
+        factory.create{value: 0.005 ether}("TestToken", "TEST", "https://example.com/token.png");
     }
     
     function test_CreateMultipleTokens() public {
         vm.startPrank(user1);
-        factory.create{value: CREATION_FEE}("Token1", "TK1");
-        factory.create{value: CREATION_FEE}("Token2", "TK2");
+        factory.create{value: CREATION_FEE}("Token1", "TK1", "https://example.com/token1.png");
+        factory.create{value: CREATION_FEE}("Token2", "TK2", "https://example.com/token2.png");
         vm.stopPrank();
         
         assertEq(factory.totalTokens(), 2);
@@ -100,7 +101,7 @@ contract FactoryTest is Test {
     function test_BuyTokens() public {
         // Create token
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         address tokenAddress = factory.tokens(0);
         uint256 amountToBuy = 1000 ether;
@@ -118,7 +119,7 @@ contract FactoryTest is Test {
         vm.stopPrank();
         
         // Verify purchase
-        (,, , uint256 sold, uint256 raised,) = factory.tokenToSale(tokenAddress);
+        (,, , uint256 sold, uint256 raised,,) = factory.tokenToSale(tokenAddress);
         assertEq(sold, amountToBuy);
         assertEq(raised, price);
         
@@ -128,7 +129,7 @@ contract FactoryTest is Test {
     
     function test_Revert_BuyTokensInsufficientAmount() public {
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         address tokenAddress = factory.tokens(0);
         
@@ -139,7 +140,7 @@ contract FactoryTest is Test {
     
     function test_Revert_BuyTokensExceedMax() public {
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         address tokenAddress = factory.tokens(0);
         
@@ -150,22 +151,20 @@ contract FactoryTest is Test {
     
     function test_SaleClosesAtTokenLimit() public {
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         address tokenAddress = factory.tokens(0);
         
-        // Buy TOKEN_LIMIT amount in batches (max 10000 ether per buy)
+        // Buy TOKEN_LIMIT amount using different users (since one user can only buy once)
         uint256 batchSize = 10000 ether;
         uint256 targetAmount = 500_000 ether;
         uint256 boughtSoFar = 0;
-        
-        vm.deal(user2, 100 ether); // Give enough ETH for purchases
-        vm.startPrank(user2);
+        uint256 userIndex = 0;
         
         // Keep buying until we reach the token limit or sale closes
         while (boughtSoFar < targetAmount) {
             // Check if sale is still open before buying
-            (,,,,, bool isOpen) = factory.tokenToSale(tokenAddress);
+            (,,,,, bool isOpen,) = factory.tokenToSale(tokenAddress);
             if (!isOpen) break;
             
             uint256 amountToBuy = batchSize;
@@ -173,21 +172,25 @@ contract FactoryTest is Test {
                 amountToBuy = targetAmount - boughtSoFar;
             }
             
+            // Create a new user for each purchase (since users can only buy once)
+            address buyer = makeAddr(string(abi.encodePacked("buyer", vm.toString(userIndex))));
+            vm.deal(buyer, 10 ether);
+            userIndex++;
+            
             uint256 cost = factory.getCost(boughtSoFar);
             uint256 price = cost * (amountToBuy / 10**18);
             
+            vm.prank(buyer);
             factory.buy{value: price}(tokenAddress, amountToBuy);
             boughtSoFar += amountToBuy;
             
             // Check again after buying if sale closed
-            (,,,,, bool stillOpen) = factory.tokenToSale(tokenAddress);
+            (,,,,, bool stillOpen,) = factory.tokenToSale(tokenAddress);
             if (!stillOpen) break;
         }
         
-        vm.stopPrank();
-        
         // Sale should be closed now
-        (,,,uint256 sold,, bool finalIsOpen) = factory.tokenToSale(tokenAddress);
+        (,,,uint256 sold,, bool finalIsOpen,) = factory.tokenToSale(tokenAddress);
         assertFalse(finalIsOpen);
         assertTrue(sold >= factory.TOKEN_LIMIT() || sold > 0); // Either hit limit or raised target
     }
@@ -214,22 +217,20 @@ contract FactoryTest is Test {
     function test_Deposit() public {
         // Create and buy tokens
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         address tokenAddress = factory.tokens(0);
         
-        // Buy enough to reach target in batches (max 10000 ether per buy)
+        // Buy enough to reach target using different users (since one user can only buy once)
         uint256 batchSize = 10000 ether;
         uint256 targetAmount = 500_000 ether;
         uint256 boughtSoFar = 0;
-        
-        vm.deal(user2, 100 ether); // Give enough ETH
-        vm.startPrank(user2);
+        uint256 userIndex = 0;
         
         // Keep buying until sale closes (either TOKEN_LIMIT or TARGET reached)
         while (boughtSoFar < targetAmount) {
             // Check if sale is still open before buying
-            (,,,,, bool isOpen) = factory.tokenToSale(tokenAddress);
+            (,,,,, bool isOpen,) = factory.tokenToSale(tokenAddress);
             if (!isOpen) break;
             
             uint256 amountToBuy = batchSize;
@@ -237,18 +238,22 @@ contract FactoryTest is Test {
                 amountToBuy = targetAmount - boughtSoFar;
             }
             
+            // Create a new user for each purchase (since users can only buy once)
+            address buyer = makeAddr(string(abi.encodePacked("buyer", vm.toString(userIndex))));
+            vm.deal(buyer, 10 ether);
+            userIndex++;
+            
             uint256 cost = factory.getCost(boughtSoFar);
             uint256 price = cost * (amountToBuy / 10**18);
             
+            vm.prank(buyer);
             factory.buy{value: price}(tokenAddress, amountToBuy);
             boughtSoFar += amountToBuy;
             
             // Check again after buying if sale closed
-            (,,,,, bool stillOpen) = factory.tokenToSale(tokenAddress);
+            (,,,,, bool stillOpen,) = factory.tokenToSale(tokenAddress);
             if (!stillOpen) break;
         }
-        
-        vm.stopPrank();
         
         uint256 creatorBalanceBefore = user1.balance;
         Token token = Token(tokenAddress);
@@ -267,7 +272,7 @@ contract FactoryTest is Test {
     
     function test_Revert_DepositBeforeTargetReached() public {
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         address tokenAddress = factory.tokens(0);
         
@@ -283,7 +288,7 @@ contract FactoryTest is Test {
     function test_OwnerCanWithdraw() public {
         // Create token with fee - this sends CREATION_FEE to the factory
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         // Verify factory has the fee
         assertEq(address(factory).balance, CREATION_FEE);
@@ -300,7 +305,7 @@ contract FactoryTest is Test {
     
     function test_Revert_NonOwnerCannotWithdraw() public {
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         vm.prank(user2);
         vm.expectRevert();
@@ -313,12 +318,13 @@ contract FactoryTest is Test {
     
     function test_GetTokenSale() public {
         vm.prank(user1);
-        factory.create{value: CREATION_FEE}("TestToken", "TEST");
+        factory.create{value: CREATION_FEE}("TestToken", "TEST", "https://example.com/token.png");
         
         Factory.TokenSale memory sale = factory.getTokenSale(0);
         
         assertEq(sale.name, "TestToken");
         assertEq(sale.creator, user1);
         assertTrue(sale.isOpen);
+        assertEq(sale.image, "https://example.com/token.png");
     }
 }

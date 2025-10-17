@@ -19,10 +19,12 @@ contract Factory{
         uint256 sold;
         uint256 raised;
         bool isOpen;
+        string image;
     }
 
     event Created(address indexed token);
     event Buy(address indexed token , uint256 amount);
+    event SaleClosed(address indexed token);
     
     constructor(uint256 _fee){
         fee = _fee;
@@ -42,7 +44,7 @@ contract Factory{
     }
 
     // for creating token and counting the number of to
-    function create(string memory _name , string memory _symbol) external payable {
+    function create(string memory _name , string memory _symbol, string memory _image) external payable {
         require(msg.value >= fee , "factory: Creator fee not met");
         Token token = new Token(msg.sender,_name , _symbol , 1_000_000 ether);
 
@@ -57,7 +59,8 @@ contract Factory{
             msg.sender,
             0,
             0,
-            true
+            true,
+            _image
         );
 
         tokenToSale[address(token)] = sale;
@@ -70,6 +73,7 @@ contract Factory{
         TokenSale storage sale = tokenToSale[_token];
 
         require(sale.isOpen == true , "Factory : buying is closed");
+        require(Token(_token).balanceOf(msg.sender) == 0, "Factory : You already own this token");
         require(_amount >=1 ether , "Factory : Amount too low");
         require(_amount <= 10000 ether ,"Factory : amount exceed");
 
@@ -89,6 +93,15 @@ contract Factory{
         Token(_token).transfer(msg.sender, _amount);
 
         emit Buy(_token, _amount);
+    }
+
+    function closeSale(address _token) external {
+        TokenSale storage sale = tokenToSale[_token];
+        require(msg.sender == sale.creator, "Factory : not creator");
+        require(sale.isOpen == true, "Factory : already closed");
+        
+        sale.isOpen = false;
+        emit SaleClosed(_token);
     }
 
     function deposit(address _token) external {
