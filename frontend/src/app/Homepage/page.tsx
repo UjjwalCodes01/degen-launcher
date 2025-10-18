@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/ui/file-upload";
 import TokenList from "@/components/TokenList";
+import { uploadImage } from "@/lib/ipfs";
 
 const factoryAbi = FactoryABI.abi as unknown as Abi;
 
@@ -37,25 +38,53 @@ const page = () => {
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleFileUpload = (files: File[]) => {
+    // Clear previous errors
+    setImageError(null);
+    
+    if (files.length === 0) {
+      setImagePreview(null);
+      setFiles([]);
+      return;
+    }
+
+    const file = files[0];
+    
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setImageError('Please upload a valid image file (PNG, JPEG, GIF, or WebP)');
+      setImagePreview(null);
+      setFiles([]);
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      setImageError('Image size must be less than 5MB. Please choose a smaller image.');
+      setImagePreview(null);
+      setFiles([]);
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.onerror = () => {
+      setImageError('Failed to read image file. Please try again.');
+      setImagePreview(null);
+    };
+    reader.readAsDataURL(file);
+    
     setFiles(files);
     console.log(files);
-  };
-
-  // Helper function to upload image and get URL
-  const uploadImage = async (file: File): Promise<string> => {
-    // For now, we'll create a local object URL
-    // In production, you should upload to IPFS or your server
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        // This creates a data URL (base64)
-        // For production, upload to IPFS and use that URL
-        resolve(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    });
   };
 
   // Read total number of tokens
@@ -107,8 +136,15 @@ const page = () => {
     }
 
     try {
-      // Upload image and get URL
-      const imageUrl = await uploadImage(files[0]);
+      // Show uploading toast
+      setToast({ message: "Uploading image to IPFS...", type: 'info' });
+      setIsUploadingImage(true);
+      
+      // Upload image to IPFS and get URL
+      const imageUrl = await uploadImage(files[0], true); // true = try IPFS first
+      
+      console.log('📸 Image uploaded:', imageUrl);
+      setToast({ message: "Image uploaded! Creating token...", type: 'info' });
       
       writeCreate({
         address: FACTORY_ADDRESS,
@@ -119,7 +155,10 @@ const page = () => {
       } as any);
     } catch (error) {
       console.error("Error uploading image:", error);
-      setToast({ message: "Failed to upload image. Please try again.", type: 'error' });
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload image";
+      setToast({ message: errorMessage, type: 'error' });
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -152,6 +191,8 @@ const page = () => {
       setTokenName("");
       setTokenSymbol("");
       setFiles([]); // Clear uploaded files
+      setImagePreview(null); // Clear preview
+      setImageError(null); // Clear errors
       // Delay refetch slightly to ensure blockchain state is updated
       setTimeout(() => {
         refetchTotalTokens();
@@ -233,9 +274,67 @@ const page = () => {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4">
-                      <div className="grid border-2 border-black rounded-md gap-4">
-                        <FileUpload onChange={handleFileUpload} />
+                      <div className="grid border-2 border-black rounded-md overflow-hidden">
+                        {/* Image Preview inside upload area - Responsive */}
+                        {imagePreview && !imageError ? (
+                          <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 p-4 sm:p-6 flex flex-col items-center justify-center min-h-[200px]">
+                            {isUploadingImage && (
+                              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                                <div className="flex flex-col items-center gap-3">
+                                  <svg className="animate-spin h-12 w-12 text-blue-600" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  <p className="text-blue-700 font-semibold text-sm">Uploading to IPFS...</p>
+                                </div>
+                              </div>
+                            )}
+                            <div className="relative rounded-xl overflow-hidden border-4 border-blue-400 shadow-lg w-full max-w-[200px] aspect-square">
+                              <Image 
+                                src={imagePreview} 
+                                alt="Token preview" 
+                                fill
+                                sizes="200px"
+                                className="object-cover"
+                                priority
+                              />
+                            </div>
+                            <div className="mt-4 text-center w-full px-2">
+                              <p className="text-sm font-semibold text-blue-700 truncate">
+                                ✓ {files[0]?.name}
+                              </p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                {(files[0]?.size / 1024).toFixed(2)} KB
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFiles([]);
+                                  setImagePreview(null);
+                                  setImageError(null);
+                                }}
+                                disabled={isUploadingImage}
+                                className="mt-3 text-sm text-red-600 hover:text-red-800 font-medium underline disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Remove Image
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <FileUpload onChange={handleFileUpload} />
+                        )}
                       </div>
+                      
+                      {/* Image Error Message */}
+                      {imageError && (
+                        <div className="bg-red-50 border-2 border-red-400 text-red-700 px-4 py-3 rounded-xl flex items-start gap-3">
+                          <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                          <p className="text-sm font-medium">{imageError}</p>
+                        </div>
+                      )}
+                      
                       <div className="grid gap-2">
                         <Label htmlFor="token-name" className="text-black font-semibold text-sm uppercase tracking-wide">
                           Token Name
@@ -275,10 +374,18 @@ const page = () => {
                       </DialogClose>
                       <Button 
                         type="submit" 
-                        disabled={isCreating || isConfirmingCreate}
+                        disabled={isUploadingImage || isCreating || isConfirmingCreate}
                         className="flex-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:opacity-90 text-white font-bold py-3 rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isCreating || isConfirmingCreate ? (
+                        {isUploadingImage ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Uploading to IPFS...
+                          </span>
+                        ) : isCreating || isConfirmingCreate ? (
                           <span className="flex items-center justify-center gap-2">
                             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />

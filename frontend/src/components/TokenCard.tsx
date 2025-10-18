@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import ImageWithFallback from './ImageWithFallback';
 
 interface TokenCardProps {
   name: string;
@@ -25,18 +25,21 @@ export default function TokenCard({
 
   return (
     <div className="token-card">
-      {/* Token Image with Glow Effect */}
-      <div className="relative w-full h-48 mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10"></div>
-        <Image
+      {/* Token Image with Glow Effect - Responsive with Loading */}
+      <div className="relative w-full aspect-square sm:aspect-video md:aspect-square mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 image-container">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 z-0"></div>
+        <ImageWithFallback
           src={image}
           alt={`${name} token`}
           fill
-          className="object-cover mix-blend-overlay"
+          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          className="object-cover mix-blend-overlay z-10"
+          priority={false}
+          loading="lazy"
         />
         {/* Floating ticker badge */}
-        <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-blue-400/30">
-          <span className="text-blue-400 font-bold text-xs mono-font">${ticker}</span>
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-1 sm:px-3 sm:py-1 rounded-full bg-black/60 backdrop-blur-sm border border-blue-400/30 z-20">
+          <span className="text-blue-400 font-bold text-xs sm:text-sm mono-font">${ticker}</span>
         </div>
       </div>
       

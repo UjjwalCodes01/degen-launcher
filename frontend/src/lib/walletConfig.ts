@@ -7,6 +7,6 @@ import { mainnet,anvil, polygon, optimism, arbitrum, base, zksync, sepolia } fro
 export const config = getDefaultConfig({
   appName: 'Degen Launcher',
   projectId: process.env.NEXT_PUBLIC_PROJECT_ID || 'default_project_id_for_development', // Fixed env variable
-  chains: [mainnet, polygon, optimism, arbitrum, base, zksync, anvil, sepolia],
+  chains: [sepolia, mainnet, polygon, optimism, arbitrum, base, zksync], // Sepolia first as default
   ssr: true,
 });

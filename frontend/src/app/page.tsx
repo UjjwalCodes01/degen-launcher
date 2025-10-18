@@ -8,12 +8,16 @@ import ColourfulText from "@/components/ui/colourful-text";
 import { TypewriterEffectSmooth } from "@/components/ui/typewriter-effect";
 import { LinkPreview } from "@/components/ui/link-preview";
 import { Lens } from "@/components/ui/lens";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function Page() {
   const router = useRouter()
   const [hovering, setHovering] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  
   const handleClick = async () => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsNavigating(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
     router.push("/Homepage");
   };
   const images = [
@@ -26,28 +30,28 @@ export default function Page() {
     "image8.png",
     "image.png",
     "image2.png",
-    "https://assets.aceternity.com/carousel.webp",
-    "https://assets.aceternity.com/placeholders-and-vanish-input.png",
-    "https://assets.aceternity.com/shooting-stars-and-stars-background.png",
-    "https://assets.aceternity.com/signup-form.png",
-    "https://assets.aceternity.com/cloudinary_bkp/stars_sxle3d.png",
-    "https://assets.aceternity.com/spotlight-new.webp",
-    "https://assets.aceternity.com/cloudinary_bkp/Spotlight_ar5jpr.png",
-    "https://assets.aceternity.com/cloudinary_bkp/Parallax_Scroll_pzlatw_anfkh7.png",
-    "https://assets.aceternity.com/tabs.png",
-    "https://assets.aceternity.com/cloudinary_bkp/Tracing_Beam_npujte.png",
-    "https://assets.aceternity.com/cloudinary_bkp/typewriter-effect.png",
-    "https://assets.aceternity.com/glowing-effect.webp",
-    "https://assets.aceternity.com/hover-border-gradient.png",
-    "https://assets.aceternity.com/cloudinary_bkp/Infinite_Moving_Cards_evhzur.png",
-    "https://assets.aceternity.com/cloudinary_bkp/Lamp_hlq3ln.png",
-    "https://assets.aceternity.com/macbook-scroll.png",
-    "https://assets.aceternity.com/cloudinary_bkp/Meteors_fye3ys.png",
-    "https://assets.aceternity.com/cloudinary_bkp/Moving_Border_yn78lv.png",
-    "https://assets.aceternity.com/multi-step-loader.png",
-    "https://assets.aceternity.com/vortex.png",
-    "https://assets.aceternity.com/wobble-card.png",
-    "https://assets.aceternity.com/world-map.webp",
+    "image3.png",
+    "image4.png",
+    "image5.png",
+    "image6.png",
+    "image.png",
+    "image8.png",
+    "image.png",
+    "image2.png",
+    "image3.png",
+    "image4.png",
+    "image5.png",
+    "image6.png",
+    "image.png",
+    "image8.png",
+    "image3.png",
+    "image2.png",
+    "image.png",
+    "image4.png",
+    "image5.png",
+    "image6.png",
+    "image.png",
+    "image8.png",
   ];
   const words = [
     {
@@ -75,6 +79,24 @@ export default function Page() {
   ];
   return (
     <div className="relative gap-8 mx-auto my-10 flex h-screen w-full max-w-7xl flex-col items-center justify-center overflow-hidden rounded-3xl">
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-300">
+          <div className="flex flex-col items-center gap-6">
+            <LoadingSpinner size="xl" />
+            <div className="text-center space-y-2">
+              <h3 className="text-2xl font-bold text-white">Loading Tokens...</h3>
+              <p className="text-gray-400 text-sm">Connecting to Sepolia network</p>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <h2 className="relative mb-8 z-20 mx-auto max-w-4xl text-center text-2xl font-bold text-balance text-white md:text-4xl lg:text-6xl">
            <TypewriterEffectSmooth words={words} />{" "}
         <span className="relative z-20 inline-block rounded-xl  px-4 py-1 text-white decoration-[6px] underline-offset-[16px]">
@@ -101,10 +123,21 @@ export default function Page() {
         >
 
           <Button
-            className="text-2xl font-bold px-12 py-8 rounded-xl bg-gradient-to-r from-gray-700 via-gray-900 to-black text-white shadow-lg hover:scale-105 transition-transform duration-200"
+            className="text-2xl font-bold px-12 py-8 rounded-xl bg-gradient-to-r from-gray-700 via-gray-900 to-black text-white shadow-lg hover:scale-105 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
             onClick={handleClick}
+            disabled={isNavigating}
           >
-            Explore Tokens
+            {isNavigating ? (
+              <span className="flex items-center gap-3">
+                <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Loading...
+              </span>
+            ) : (
+              'Explore Tokens'
+            )}
           </Button>
         </LinkPreview>
           

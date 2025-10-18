@@ -557,4 +557,120 @@ body {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  /* Responsive Image Utilities */
+  .responsive-img {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    object-fit: cover;
+  }
+
+  .img-skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.1) 25%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0.1) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Loading Spinner */
+  .spinner {
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+/* Responsive Image Container */
+.image-container {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+}
+
+.image-container img {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.image-container:hover img {
+  transform: scale(1.05);
+}
+
+/* Page Transition Animations */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.page-transition-exit {
+  opacity: 1;
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Loading Overlay Fade */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.fade-out {
+  animation: fadeOut 0.3s ease-in-out;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .token-card {
+    max-width: 100%;
+  }
+  
+  .image-container {
+    max-height: 300px;
+  }
 }

@@ -8,9 +8,7 @@ import {console} from "forge-std/console.sol";
 
 contract DeployFactory is Script {
     function run() external returns (Factory) {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
         
         // Deploy Factory with 0.01 ETH fee
         Factory factory = new Factory(0.01 ether);
