@@ -2,7 +2,7 @@
 
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { mainnet,anvil, polygon, optimism, arbitrum, base, zksync, sepolia } from 'wagmi/chains';
+import { mainnet, polygon, optimism, arbitrum, base, zksync, sepolia } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
   appName: 'Degen Launcher',

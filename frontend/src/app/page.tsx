@@ -7,12 +7,10 @@ import { useRouter } from "next/navigation";
 import ColourfulText from "@/components/ui/colourful-text";
 import { TypewriterEffectSmooth } from "@/components/ui/typewriter-effect";
 import { LinkPreview } from "@/components/ui/link-preview";
-import { Lens } from "@/components/ui/lens";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function Page() {
   const router = useRouter()
-  const [hovering, setHovering] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   
   const handleClick = async () => {
@@ -104,7 +102,7 @@ export default function Page() {
         </span>
       </h2>
       <p className="relative mt-8 z-20 mx-auto max-w-2xl py-8 text-center text-xl text-neutral-200 md:text-base">
-        You're not just a trader. You're a creator, a trendsetter, and a pioneer
+        You&apos;re not just a trader. You&apos;re a creator, a trendsetter, and a pioneer
         in the world of decentralized finance. Build, launch, and trade meme
         coins with bonding curve mechanics—no gatekeepers, no limits, just pure
         DeFi innovation.

@@ -3,15 +3,10 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { ShimmerButton } from "@/components/ui/shimmer-button";
-import { RippleButton } from "@/components/ui/ripple-button";
-import { CometCard } from "@/components/ui/comet-card";
-import { PixelatedCanvas } from "@/components/ui/pixelated-canvas";
-import { Boxes } from "@/components/ui/background-boxes";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { FACTORY_ADDRESS } from "@/contracts/addresses";
 import FactoryABI from "@/contracts/Factory.json";
-import { parseEther, formatEther, Abi } from "viem";
+import { parseEther, Abi } from "viem";
 import {
   Dialog,
   DialogClose,
@@ -31,7 +26,7 @@ import { uploadImage } from "@/lib/ipfs";
 
 const factoryAbi = FactoryABI.abi as unknown as Abi;
 
-const page = () => {
+export default function Homepage() {
   const { address, isConnected, chain } = useAccount();
   const [files, setFiles] = useState<File[]>([]);
   const [tokenName, setTokenName] = useState("");
@@ -111,14 +106,14 @@ const page = () => {
 
   // Write contract hooks
   const { writeContract: writeCreate, data: createHash, isPending: isCreating, error: createError } = useWriteContract();
-  const { writeContract: writeBuy, data: buyHash, isPending: isBuying, error: buyError } = useWriteContract();
+  const { writeContract: writeBuy, data: buyHash, error: buyError } = useWriteContract();
 
   // Transaction receipts
   const { isLoading: isConfirmingCreate, isSuccess: isCreateSuccess } = useWaitForTransactionReceipt({
     hash: createHash,
   });
 
-  const { isLoading: isConfirmingBuy, isSuccess: isBuySuccess } = useWaitForTransactionReceipt({
+  const { isSuccess: isBuySuccess } = useWaitForTransactionReceipt({
     hash: buyHash,
   });
 
@@ -152,7 +147,7 @@ const page = () => {
         functionName: 'create',
         args: [tokenName, tokenSymbol, imageUrl],
         value: parseEther('0.01'),
-      } as any);
+      });
     } catch (error) {
       console.error("Error uploading image:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload image";
@@ -179,7 +174,7 @@ const page = () => {
       functionName: 'buy',
       args: [tokenAddress, amountInWei],
       value: parseEther('0.1'), // Placeholder - should calculate actual cost
-    } as any);
+    });
   };
 
   // Handle create success
@@ -465,6 +460,4 @@ const page = () => {
       )}
     </div>
   );
-};
-
-export default page;
+}
