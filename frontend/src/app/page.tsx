@@ -114,7 +114,7 @@ export default function Page() {
         </div>
         <div className="flex h-20 items-center justify-center">
           <LinkPreview
-          url="http://localhost:3000/Homepage"
+          url="/Homepage"
           imageSrc="nft.png"
           isStatic
           className="font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-500 to-pink-500"
