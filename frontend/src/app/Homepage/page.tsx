@@ -7,6 +7,7 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAcc
 import { FACTORY_ADDRESS } from "@/contracts/addresses";
 import FactoryABI from "@/contracts/Factory.json";
 import { parseEther, Abi } from "viem";
+import toast from 'react-hot-toast';
 import {
   Dialog,
   DialogClose,
@@ -32,7 +33,6 @@ export default function Homepage() {
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -120,26 +120,33 @@ export default function Homepage() {
   // Handle create token
   const handleCreateToken = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check wallet connection first
+    if (!isConnected) {
+      toast.error("Please connect your wallet to create a token");
+      return;
+    }
+
     if (!tokenName || !tokenSymbol) {
-      setToast({ message: "Please fill in all fields", type: 'error' });
+      toast.error("Please fill in all fields");
       return;
     }
 
     if (files.length === 0) {
-      setToast({ message: "Please upload an image for your token", type: 'error' });
+      toast.error("Please upload an image for your token");
       return;
     }
 
     try {
       // Show uploading toast
-      setToast({ message: "Uploading image to IPFS...", type: 'info' });
+      const uploadToast = toast.loading("Uploading image to IPFS...");
       setIsUploadingImage(true);
       
       // Upload image to IPFS and get URL
       const imageUrl = await uploadImage(files[0], true); // true = try IPFS first
       
       console.log('📸 Image uploaded:', imageUrl);
-      setToast({ message: "Image uploaded! Creating token...", type: 'info' });
+      toast.success("Image uploaded! Creating token...", { id: uploadToast });
       
       writeCreate({
         address: FACTORY_ADDRESS,
@@ -151,7 +158,7 @@ export default function Homepage() {
     } catch (error) {
       console.error("Error uploading image:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload image";
-      setToast({ message: errorMessage, type: 'error' });
+      toast.error(errorMessage);
     } finally {
       setIsUploadingImage(false);
     }
@@ -159,13 +166,21 @@ export default function Homepage() {
 
   // Handle buy token
   const handleBuyToken = (tokenAddress: string, amount: string) => {
+    // Check wallet connection first
+    if (!isConnected) {
+      toast.error("Please connect your wallet to buy tokens");
+      return;
+    }
+
     if (!amount || Number(amount) <= 0) {
-      setToast({ message: "Please enter a valid amount", type: 'error' });
+      toast.error("Please enter a valid amount");
       return;
     }
 
     const amountInWei = parseEther(amount);
 
+    toast.loading("Processing token purchase...");
+    
     // Note: In production, you should fetch the cost first
     // For now, we'll estimate the cost (you need to implement getCost)
     writeBuy({
@@ -181,7 +196,10 @@ export default function Homepage() {
   useEffect(() => {
     if (isCreateSuccess) {
       console.log("✅ Token created successfully! Refetching total tokens...");
-      setToast({ message: "Token created successfully! 🎉", type: 'success' });
+      toast.success(" Token created successfully!", {
+        duration: 4000,
+        icon: '🤩',
+      });
       setIsDialogOpen(false);
       setTokenName("");
       setTokenSymbol("");
@@ -199,7 +217,7 @@ export default function Homepage() {
   // Handle buy success
   useEffect(() => {
     if (isBuySuccess) {
-      setToast({ message: "Tokens purchased successfully!", type: 'success' });
+      toast.success("✅ Tokens purchased successfully!");
       refetchTotalTokens();
     }
   }, [isBuySuccess, refetchTotalTokens]);
@@ -207,20 +225,12 @@ export default function Homepage() {
   // Handle errors
   useEffect(() => {
     if (createError) {
-      setToast({ message: "Failed to create token. Please try again.", type: 'error' });
+      toast.error("❌ Failed to create token. Please try again.");
     }
     if (buyError) {
-      setToast({ message: "Failed to buy tokens. Please try again.", type: 'error' });
+      toast.error("❌ Failed to buy tokens. Please try again.");
     }
   }, [createError, buyError]);
-
-  // Auto-dismiss toast
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   console.log("Wallet Connected:", isConnected);
   console.log(" Wallet Address:", address);
@@ -408,11 +418,11 @@ export default function Homepage() {
         >
           <div className="max-w-7xl mx-auto p-6">
             {/* Token Details Section */}
-            <div className="mb-8">
+            <div className="mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent text-center">
                 Trending Tokens
               </h2>
-              <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700 rounded-lg p-6 mb-6">
+              <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700 rounded-lg p-6">
                 <div className="flex justify-center">
                   <div className="text-center">
                     <p className="text-gray-400 text-sm mb-1">Total Tokens Created</p>
@@ -423,41 +433,14 @@ export default function Homepage() {
                 </div>
               </div>
             </div>
-            <TokenList totalTokens={totalTokens ? Number(totalTokens) : 0} onBuy={handleBuyToken} />
+            
+            {/* Token List Section */}
+            <div className="mt-16">
+              <TokenList totalTokens={totalTokens ? Number(totalTokens) : 0} onBuy={handleBuyToken} />
+            </div>
           </div>
         </main>
       </div>
-
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-top-2 duration-300">
-          <div className={`${
-            toast.type === 'success' ? 'bg-green-500/90' : 
-            toast.type === 'error' ? 'bg-red-500/90' : 
-            'bg-blue-500/90'
-          } backdrop-blur-lg text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px]`}>
-            {toast.type === 'success' && (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-            {toast.type === 'error' && (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-            <p className="flex-1 font-medium">{toast.message}</p>
-            <button
-              onClick={() => setToast(null)}
-              className="hover:bg-white/20 rounded-lg p-1 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
